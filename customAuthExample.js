@@ -1,11 +1,13 @@
+//very simple stitch custom login example
+
 const client = stitch.Stitch.initializeDefaultAppClient("client-appid");
 
 const emailInput=document.getElementById("email");
 const passwordInput=document.getElementById("password");
-const lcsJWTProviderURL = "http://url.for.login.adapter.server.com";
+const stitchLoginAdapterURL = "http://url.for.login.adapter.server.com";
 const lcsLogin = (email, password) => {
     const body=JSON.stringify({email, password})
-    return fetch(lcsJWTProviderURL, {
+    return fetch(stitchLoginAdaptorURL, {
 	method: "POST",
 	headers: {
 	    "Content-Type": "application/json"
@@ -14,7 +16,7 @@ const lcsLogin = (email, password) => {
     }).then(r=>r.json())
 }
 
-document.getElementById("loginButton").onclick=e=>{
+document.getElementById("loginButton").onclick= e => {
     const email = emailInput.value;
     const password = passwordInput.value;
     lcsLogin(email, password).then(({validLogin, token, err}) => {
@@ -28,10 +30,9 @@ document.getElementById("loginButton").onclick=e=>{
 	}
     }).then(authedUser => {
 	console.log("authed with id", authedUser.id);
-	console.log(authedUser.data);
+	console.log(authedUser.data); //:C
     }).catch(err => {
 	console.error(err)
 	alert("login failed: "+err.message)
-    })
-    
+    });    
 }

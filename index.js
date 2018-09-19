@@ -11,13 +11,28 @@ const jwt=require("jsonwebtoken");
 const cors=require("cors");
 const axios=require("axios");
 
+//parts of this are specific to LCS (the HackRU backend)
+//but it can easily be recycled for any login system
+//that can be accessed through http. (or potentialy ldap + friends)
+
+//config you need from stich so it can accept your JWTs
+
 const secret="example_secret_that_is_32_long32";
 const stitchAppIdmentorq="appid-for-client";
 const LCSURL="https://url.for.the.login.server.com";
 
-const stitchAPIKey="VBz7bM4IvAWSjVR6OswX9t2ZovxWGwgLGN0WffIUy7NGjcERWWk0FYzC8m8ZBkXe";
+//config and setup to upload user meta to stitch
+//idealy this would already be done by seting stitch_meta
+//in the JWTs, but I'm not sure why it wasn't working so
+//a partial work around is to add meta to a collection in stitch
+//and associate it with a user with a db trigger. the trigger doesn't
+//work that well since the user logs in and sees no data because
+//there is a delay to change the owner of the meta
+
+const stitchAPIKey="beautifly-long-api-key-that-seems-pretty-safe";
 const stitchAppIdMentorQLCS="appid-for-server-to-upload-metadata";
 
+//initialize the client and get a reference to the user meta collections
 const client=Stitch.initializeDefaultAppClient(stitchAppIdMentorQLCS);
 
 const lcsDataColl=client.getServiceClient(
@@ -28,6 +43,8 @@ const lcsDataColl=client.getServiceClient(
 app.use(bodyParser.json());
 app.use(cors());
 
+//this is the function that checks if logins are valid
+//for LCS it returns a promise with an LCS token
 const LCSLogin = (username, password) => {
     return axios.post(LCSURL+"/authorize", {
 	email: username,
@@ -45,6 +62,7 @@ const LCSLogin = (username, password) => {
     })
 }
 
+//this is the function that gets use meta and ot also returns a promise
 const getLCSData = function(email, token){
     return axios.post(LCSURL+"/read", {
 	email: email,
@@ -61,6 +79,7 @@ const getLCSData = function(email, token){
     })
 }
 
+//this is the only route
 app.post("/login", (req, res)=>{
     const email = req.body.email;
     const password = req.body.password;
@@ -78,7 +97,7 @@ app.post("/login", (req, res)=>{
 		aud: stitchAppIdmentorq,
 		stitch_meta
 	    }, secret, {
-		expiresIn: 60*60*12
+		expiresIn: 60*60*12 //12hrs
 	    })
 	    return Promise.all([
 		token,
@@ -101,6 +120,7 @@ app.post("/login", (req, res)=>{
 	})
 });
 
+//we have to make sure we login and have a good client before starting the server
 client.auth.loginWithCredential(new stitch.ServerApiKeyCredential(stitchAPIKey))
     .then(user=>{
 	app.listen(80, function(){
