@@ -1,4 +1,4 @@
-#!/home/ubuntu/.nvm/versions/node/v10.10.0/bin/node
+#!/path/to/some/nodejs
 const stitch=require("mongodb-stitch-server-sdk");
 const Stitch=stitch.Stitch;
 const ServerApiKeyCredential=stitch.ApiKeyCredential;
