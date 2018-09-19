@@ -1,0 +1,20 @@
+{
+  "name": "lcs-stitch-jwt",
+  "version": "1.0.0",
+  "description": "mongodb stitch custom auth provider middle ware to use lcs as a login provider",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"no yet\""
+  },
+  "author": "Mickey J Winters",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^0.18.0",
+    "body-parser": "^1.18.3",
+    "cors": "^2.8.4",
+    "express": "^4.16.3",
+    "jsonwebtoken": "^8.3.0",
+    "mongodb-stitch-server-sdk": "^4.0.13",
+    "mongodb-stitch-server-services-mongodb-remote": "^4.0.13"
+  }
+}
