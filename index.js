@@ -1,4 +1,3 @@
-#!/path/to/some/nodejs
 const stitch=require("mongodb-stitch-server-sdk");
 const Stitch=stitch.Stitch;
 const ServerApiKeyCredential=stitch.ApiKeyCredential;
@@ -17,31 +16,30 @@ const axios=require("axios");
 
 //config you need from stich so it can accept your JWTs
 
-const secret="example_secret_that_is_32_long32";
-const stitchAppIdmentorq="appid-for-client";
-const LCSURL="https://url.for.the.login.server.com";
+const secret=process.env.SLA_SECRET || "example_secret_that_is_32_long32";
+const stitchAppId=process.env.SLA_APP_ID ||  "appid-for-client";
 
-//config and setup to upload user meta to stitch
-//idealy this would already be done by seting stitch_meta
-//in the JWTs, but I'm not sure why it wasn't working so
-//a partial work around is to add meta to a collection in stitch
-//and associate it with a user with a db trigger. the trigger doesn't
-//work that well since the user logs in and sees no data because
-//there is a delay to change the owner of the meta
+//route to real login server
+const LCSURL=process.env.SLA_UPSTREAM_URL || "https://url.for.the.login.server.com";
+const port=process.env.SLA_PORT || 3000;
 
-const stitchAPIKey="beautifly-long-api-key-that-seems-pretty-safe";
-const stitchAppIdMentorQLCS="appid-for-server-to-upload-metadata";
-
-//initialize the client and get a reference to the user meta collections
-const client=Stitch.initializeDefaultAppClient(stitchAppIdMentorQLCS);
-
-const lcsDataColl=client.getServiceClient(
-    RemoteMongoClient.factory,
-    "mongodb-atlas"
-).db("mentorq").collection("lcsdata");
 
 app.use(bodyParser.json());
 app.use(cors());
+
+class BadResponse extends Error {
+    constructor(response){
+	this.name="BadResponseError "+response.data.code;	
+	this.message="unexpected response from LCS "
+	    +JSON.stringify(response);
+    }
+}
+class BadLogin extends Error {
+    constructor(){
+	this.name="BadLogin";
+	this.message="Bad Username or Password";
+    }
+}
 
 //this is the function that checks if logins are valid
 //for LCS it returns a promise with an LCS token
@@ -52,9 +50,9 @@ const LCSLogin = (username, password) => {
     }).then(LCSResponse => {
 	const code = LCSResponse.data.statusCode;
 	if(code === 403){
-	    throw new Error("Bad Username or Password")
+	    throw new BadLogin();
 	} else if (code !== 200) {
-	    throw new Error("LCS Response " + code)
+	    throw new BadResponse(LCSResponse);
 	}
 	const responseBody = LCSResponse.data.body;
 	const token = JSON.parse(responseBody).auth.token;
@@ -67,12 +65,13 @@ const getLCSData = function(email, token){
     return axios.post(LCSURL+"/read", {
 	email: email,
 	token: token,
+	//this is some LCS specific trickery
 	//looking for a user document with our email will give
 	//us the entire user's document
 	query: {email: email}
     }).then(response => {
 	if (response.data.statusCode !== 200) {
-	    throw new Error("Failed to get user data " + code)
+	    throw new BadResponse(response);
 	}
 	const LCSData=response.data.body[0];
 	return {token, LCSData};
@@ -94,36 +93,32 @@ app.post("/login", (req, res)=>{
 	.then(stitch_meta => {
 	    const token = jwt.sign({
 		sub: email,
-		aud: stitchAppIdmentorq,
+		aud: stitchAppId,
 		stitch_meta
 	    }, secret, {
 		expiresIn: 60*60*12 //12hrs
 	    })
-	    return Promise.all([
-		token,
-		lcsDataColl.updateOne(
-		    {email},
-		    {email, stitch_data},
-		    {upsert: true}
-		)
-	    ]);
-	}).then(([token, upsertResult])=>{
 	    res.status(200).json({
 		validLogin: true,
 		token
             });
 	}).catch(err => {
-            res.status(403).json({
-		validLogin: false,
-		err: err.message
-	    });
+	    if(err.name === "BadLogin"){
+		res.status(403).json({
+		    validLogin: false,
+		    err: err.message
+		});
+	    } else {
+		console.log(err.name,err.message);
+		res.status(500).json({
+		    validLogin: false,
+		    err: err.message
+		})
+	    }
 	})
 });
 
-//we have to make sure we login and have a good client before starting the server
-client.auth.loginWithCredential(new stitch.ServerApiKeyCredential(stitchAPIKey))
-    .then(user=>{
-	app.listen(80, function(){
-	    console.log('listening on port 80');
-	});
-    })
+app.listen(port, function(){
+    console.log("listening on port "+port);
+});
+
