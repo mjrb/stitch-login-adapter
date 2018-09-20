@@ -4,7 +4,7 @@ const client = stitch.Stitch.initializeDefaultAppClient("client-appid");
 
 const emailInput=document.getElementById("email");
 const passwordInput=document.getElementById("password");
-const stitchLoginAdapterURL = "http://url.for.login.adapter.server.com";
+const stitchLoginAdapterURL = "http://url.for.login.adapter.com";
 const lcsLogin = (email, password) => {
     const body=JSON.stringify({email, password})
     return fetch(stitchLoginAdaptorURL, {
@@ -30,7 +30,7 @@ document.getElementById("loginButton").onclick= e => {
 	}
     }).then(authedUser => {
 	console.log("authed with id", authedUser.id);
-	console.log(authedUser.data); //:C
+	console.log(authedUser.profile.data);
     }).catch(err => {
 	console.error(err)
 	alert("login failed: "+err.message)
